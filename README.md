@@ -1,6 +1,10 @@
-# 🚀 Zanai AI Agents Platform
+# 🚀 Zanai AI Agents Platform V3
 
 Uma plataforma completa de agentes de IA para transformar negócios com automação inteligente, atendimento personalizado e análise de dados avançada.
+
+## 🆙 Versão 3.0
+
+Esta é a versão mais recente e estável da plataforma Zanai, com integração completa com FlowiseAI e MCP (Model Context Protocol).
 
 ## ✨ Visão Geral
 
