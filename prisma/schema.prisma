@@ -1,0 +1,554 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("user") // 'user', 'admin', 'company_admin', 'client'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relacionamentos com o sistema Zanai
+  agents    Agent[]
+  workspaces Workspace[]
+  
+  // Relacionamentos com o sistema urbano
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  clients    Client[]
+  
+  @@map("users")
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Modelos para o sistema Zanai
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  config      String   // JSON com configuração do workspace
+  vscodeContext String? // JSON com contexto do VS Code
+  lastSyncedAt DateTime? // Última sincronização com VS Code
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id])
+  agents      Agent[]
+  compositions Composition[]
+  mcpServers  MCPServer[]
+  
+  @@index([userId])
+}
+
+model Agent {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  type        String   // 'template', 'custom', 'composed'
+  config      String   // YAML com configuração do agente
+  knowledge   String?  // Markdown com conhecimento do agente
+  templateId  String?  // ID do template se baseado em template
+  status      String   @default("active") // 'active', 'inactive', 'training'
+  workspaceId String
+  userId      String?  // Opcional para agentes compartilhados
+  chatflowUrl String?  // URL do chatflow no Flowise
+  flowiseId   String?  // ID do workflow no Flowise
+  exportedToFlowise Boolean @default(false) // Se foi exportado para Flowise
+  exportedAt  DateTime? // Data da exportação para Flowise
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  user        User?     @relation(fields: [userId], references: [id])
+  compositions Composition[]
+  learnings   Learning[]
+  executions  AgentExecution[]
+  metrics     AgentMetrics[]
+  mcpConnections MCPConnection[]
+  
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model Composition {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  config        String   // YAML com configuração da composição
+  status        String   @default("draft") // 'draft', 'active', 'inactive'
+  workspaceId   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id])
+  agents        Agent[]
+  executions    Execution[]
+  
+  @@index([workspaceId])
+}
+
+model Learning {
+  id          String   @id @default(cuid())
+  agentId     String
+  type        String   // 'feedback', 'pattern', 'adaptation'
+  data        String   // JSON com dados de aprendizado
+  confidence  Float    @default(0.0)
+  createdAt   DateTime @default(now())
+  
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  
+  @@index([agentId])
+}
+
+model AgentExecution {
+  id           String   @id @default(cuid())
+  agentId      String
+  input        String
+  output       String?
+  status       String   @default("pending") // 'pending', 'running', 'completed', 'failed'
+  context      String?  // JSON com contexto adicional
+  vscodeContext String? // JSON com contexto do VS Code durante execução
+  result       String?  // JSON com resultado detalhado
+  error        String?  // Mensagem de erro se falhou
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  
+  agent        Agent    @relation(fields: [agentId], references: [id])
+  
+  @@index([agentId])
+  @@index([status])
+}
+
+model Execution {
+  id           String   @id @default(cuid())
+  compositionId String
+  input        String
+  results      String   // JSON com resultados da execução
+  status       String   @default("pending") // 'pending', 'running', 'completed', 'failed'
+  error        String?  // Mensagem de erro se falhou
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  
+  composition  Composition @relation(fields: [compositionId], references: [id])
+  
+  @@index([compositionId])
+  @@index([status])
+}
+
+model AgentMetrics {
+  id          String   @id @default(cuid())
+  timestamp   BigInt   @map("timestamp")
+  agentId     String
+  metricName  String
+  metricValue Float
+  tags        String?
+  
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  
+  @@index([agentId, timestamp])
+  @@index([metricName, timestamp])
+  @@map("agent_metrics")
+}
+
+// Modelos para o sistema urbano
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  cnpj        String   @unique
+  email       String   @unique
+  phone       String?
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  status      String   @default("active") // 'active', 'inactive', 'pending'
+  plan        String   @default("basic") // 'basic', 'premium', 'enterprise'
+  maxUsers    Int      @default(5)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  users       User[]
+  projects    Project[]
+  reports     Report[]
+  
+  @@map("companies")
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  phone       String?
+  
+  // Tipo de cadastro e cliente
+  clientType  String   @default("individual") // 'individual', 'company'
+  registrationType String @default("basic") // 'basic', 'complete'
+  
+  // Identificação e Jurídico
+  cpf         String?  @unique
+  cnpj        String?  @unique
+  rg          String?
+  ie          String?  // Inscrição Estadual
+  birthDate   DateTime?
+  foundingDate DateTime?
+  
+  // Endereço
+  address     String?
+  neighborhood String?
+  city        String?
+  state       String?
+  zipCode     String?
+  addressProof String? // URL do comprovante
+  
+  // Contato
+  whatsapp    String?
+  website     String?
+  linkedin    String?
+  instagram   String?
+  
+  // Perfil Empresarial/Profissional
+  sector      String?
+  companySize String? // 'mei', 'small', 'medium', 'large'
+  employees   Int?
+  mainProducts String? // JSON com produtos/serviços
+  targetAudience String? // 'b2b', 'b2c', 'mixed'
+  operationRegion String? // 'regional', 'national', 'international'
+  
+  // Necessidades e Objetivos
+  mainProblems String? // JSON com problemas principais
+  aiObjectives String? // JSON com objetivos com IA
+  digitalMaturity String? // 'low', 'medium', 'advanced'
+  currentTools String? // JSON com ferramentas atuais
+  
+  // Dados Operacionais
+  dataVolume  String? // 'small', 'medium', 'large'
+  dataType    String? // JSON com tipos de dados disponíveis
+  updateFrequency String? // 'daily', 'weekly', 'monthly'
+  
+  // Contratuais e Financeiros
+  paymentMethod String? // 'boleto', 'pix', 'card', 'recurrence'
+  commercialConditions String? // JSON com condições
+  lgpdConsent Boolean  @default(false)
+  lgpdConsentDate DateTime?
+  legalResponsible String?
+  
+  // Histórico de Relacionamento
+  acquisitionChannel String?
+  status      String   @default("lead") // 'lead', 'active', 'inactive'
+  interactionHistory String? // JSON com histórico
+  feedback    String? // JSON com feedbacks
+  
+  // Metadados
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  projects    Project[]
+  contracts   Contract[]
+  
+  @@map("clients")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      String   @default("planning") // 'planning', 'active', 'completed', 'cancelled'
+  budget      Float?
+  startDate   DateTime?
+  endDate     DateTime?
+  companyId   String?
+  clientId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  company     Company? @relation(fields: [companyId], references: [id])
+  client      Client?  @relation(fields: [clientId], references: [id])
+  tasks       Task[]
+  reports     Report[]
+  
+  @@map("projects")
+}
+
+model Contract {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  value       Float
+  startDate   DateTime
+  endDate     DateTime
+  status      String   @default("draft") // 'draft', 'active', 'completed', 'cancelled'
+  clientId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  client      Client   @relation(fields: [clientId], references: [id])
+  
+  @@map("contracts")
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("pending") // 'pending', 'in_progress', 'completed', 'cancelled'
+  priority    String   @default("medium") // 'low', 'medium', 'high', 'urgent'
+  dueDate     DateTime?
+  projectId   String
+  assignedTo  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  project     Project  @relation(fields: [projectId], references: [id])
+  
+  @@map("tasks")
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  title       String
+  type        String   // 'financial', 'progress', 'analytics', 'custom'
+  data        String   // JSON com dados do relatório
+  period      String   // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
+  companyId   String?
+  projectId   String?
+  createdAt   DateTime @default(now())
+  
+  company     Company? @relation(fields: [companyId], references: [id])
+  project     Project? @relation(fields: [projectId], references: [id])
+  
+  @@map("reports")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // 'create', 'update', 'delete', 'login', 'logout'
+  entityType  String   // 'user', 'company', 'client', 'project', etc.
+  entityId    String?
+  userId      String?
+  oldValues   String?  // JSON com valores antigos
+  newValues   String?  // JSON com valores novos
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  
+  @@map("audit_logs")
+}
+
+// Modelos para MCP (Model Context Protocol)
+model MCPServer {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  type          String   // 'stdio', 'sse', 'http'
+  command       String?  // Comando para servidores stdio
+  args          String?  // JSON com argumentos
+  url           String?  // URL para servidores HTTP/SSE
+  env           String?  // JSON com variáveis de ambiente
+  headers       String?  // JSON com headers para HTTP/SSE
+  status        String   @default("active") // 'active', 'inactive', 'error'
+  lastConnected DateTime?
+  workspaceId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  workspace     Workspace? @relation(fields: [workspaceId], references: [id])
+  tools         MCPTool[]
+  connections   MCPConnection[]
+  
+  @@index([workspaceId])
+  @@index([status])
+}
+
+model MCPTool {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  inputSchema   String   // JSON schema para entrada
+  serverId      String
+  status        String   @default("active") // 'active', 'inactive'
+  createdAt     DateTime @default(now())
+  
+  server        MCPServer @relation(fields: [serverId], references: [id])
+  connections   MCPConnection[]
+  
+  @@index([serverId])
+  @@index([status])
+}
+
+model MCPConnection {
+  id            String   @id @default(cuid())
+  serverId      String
+  toolId        String?
+  agentId       String?
+  config        String?  // JSON com configuração específica
+  status        String   @default("active") // 'active', 'inactive'
+  lastUsed      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  server        MCPServer @relation(fields: [serverId], references: [id])
+  tool          MCPTool?  @relation(fields: [toolId], references: [id])
+  agent         Agent?    @relation(fields: [agentId], references: [id])
+  
+  @@index([serverId])
+  @@index([agentId])
+  @@index([status])
+}
+
+// Modelos para integração com Flowise
+model FlowiseWorkflow {
+  id                    String   @id @default(cuid())
+  flowiseId            String   @unique // ID original no Flowise
+  name                  String
+  description           String?
+  type                  String   // 'CHATFLOW', 'AGENTFLOW', 'MULTIAGENT', 'ASSISTANT'
+  flowData              String   // JSON com estrutura completa do workflow
+  deployed              Boolean  @default(false)
+  isPublic              Boolean  @default(false)
+  category              String?  @default("general")
+  workspaceId           String?  // ID do workspace no Flowise
+  chatbotConfig         String?  // JSON com configurações do chatbot
+  apiConfig             String?  // JSON com configurações de API
+  
+  // Análise de complexidade
+  complexityScore      Int      @default(0) // 0-100
+  nodeCount             Int      @default(0)
+  edgeCount             Int      @default(0)
+  maxDepth              Int      @default(0)
+  criticalPath          String?  // JSON com caminho crítico
+  bottlenecks           String?  // JSON com gargalos identificados
+  optimizationSuggestions String? // JSON com sugestões de otimização
+  
+  // Estrutura extraída
+  nodes                 String?  // JSON com nós simplificados
+  connections           String?  // JSON com conexões simplificadas
+  
+  // Capacidades identificadas
+  capabilities          String?  // JSON com capacidades do workflow
+  
+  // Controle de sincronização
+  lastSyncAt            DateTime?
+  createdAt             DateTime
+  updatedAt             DateTime
+  
+  // Relacionamentos
+  syncLogs              SyncLog[]
+  executions            FlowiseExecution[]
+  
+  @@index([flowiseId])
+  @@index([type])
+  @@index([category])
+  @@index([complexityScore])
+  @@index([lastSyncAt])
+  @@map("flowise_workflows")
+}
+
+model FlowiseExecution {
+  id                    String   @id @default(cuid())
+  flowiseExecutionId    String   @unique // ID original no Flowise
+  flowiseWorkflowId     String   // ID do workflow no Flowise
+  workflowId            String   // ID local do workflow
+  sessionId             String
+  executionData         String   // JSON com dados da execução
+  state                 String   // 'INPROGRESS', 'FINISHED', 'ERROR', 'TERMINATED', 'TIMEOUT', 'STOPPED'
+  action                String?
+  isPublic              Boolean  @default(false)
+  createdDate           DateTime
+  updatedDate           DateTime
+  stoppedDate           DateTime?
+  
+  // Métricas de performance
+  duration              Int?     // Duração em milissegundos
+  success               Boolean  @default(false)
+  errorMessage          String?
+  
+  // Análise de resultados
+  resultSummary         String?  // JSON com resumo dos resultados
+  metrics               String?  // JSON com métricas detalhadas
+  
+  // Controle de sincronização
+  lastSyncAt            DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relacionamentos
+  workflow              FlowiseWorkflow @relation(fields: [workflowId], references: [id])
+  
+  @@index([flowiseExecutionId])
+  @@index([workflowId])
+  @@index([state])
+  @@index([sessionId])
+  @@index([lastSyncAt])
+  @@map("flowise_executions")
+}
+
+model SyncLog {
+  id                    String   @id @default(cuid())
+  action                String   // 'WORKFLOW_REGISTERED', 'WORKFLOW_UPDATED', 'WORKFLOW_DELETED', 'EXECUTION_SYNCED', 'BATCH_SYNC', etc.
+  flowiseId             String?  // ID do recurso no Flowise
+  resourceId            String?  // ID local do recurso
+  resourceType          String?  // 'workflow', 'execution', 'tool', etc.
+  details               String?  // JSON com detalhes da ação
+  status                String   // 'SUCCESS', 'ERROR', 'PARTIAL'
+  errorMessage          String?
+  duration              Int?     // Duração em milissegundos
+  metadata              String?  // JSON com metadados adicionais
+  createdAt             DateTime @default(now())
+  
+  // Relacionamentos
+  workflow              FlowiseWorkflow? @relation(fields: [resourceId], references: [id])
+  
+  @@index([action])
+  @@index([status])
+  @@index([flowiseId])
+  @@index([resourceId])
+  @@index([createdAt])
+  @@map("sync_logs")
+}
+
+model ExportLog {
+  id                    String   @id @default(cuid())
+  workflowId            String   // ID local do workflow
+  workflowName          String?  // Nome do workflow
+  canvasId              String?  // ID do canvas no Flowise
+  action                String   // 'EXPORT_ATTEMPT', 'EXPORT_SUCCESS', 'EXPORT_ERROR'
+  status                String   // 'PENDING', 'SUCCESS', 'ERROR'
+  details               String   // JSON com detalhes da exportação
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime? @updatedAt
+  
+  @@index([workflowId])
+  @@index([canvasId])
+  @@index([action])
+  @@index([status])
+  @@index([createdAt])
+  @@map("export_logs")
+}

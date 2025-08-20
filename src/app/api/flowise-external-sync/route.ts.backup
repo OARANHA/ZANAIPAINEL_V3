@@ -1,0 +1,1136 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+// Helper function to get Flowise configuration
+function getFlowiseConfig() {
+  return {
+    baseUrl: process.env.NEXT_PUBLIC_FLOWISE_URL || 'https://aaranha-zania.hf.space',
+    apiKey: process.env.FLOWISE_API_KEY || 'wNFL5HJcOA3RwJdKiVTUWqdzigK7OCUwRKo9KEgjenw',
+    timeout: 60000,
+    retryAttempts: 5
+  };
+}
+
+// Helper function to make authenticated requests
+async function makeFlowiseRequest(endpoint: string, options: RequestInit = {}) {
+  const config = getFlowiseConfig();
+  const url = `${config.baseUrl}${endpoint}`;
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers as Record<string, string>,
+  };
+
+  // Add API key - sempre usar a chave ZANIA
+  const apiKey = config.apiKey || 'wNFL5HJcOA3RwJdKiVTUWqdzigK7OCUwRKo9KEgjenw';
+  if (apiKey && apiKey !== 'your_flowise_api_key_here') {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers,
+  };
+
+  try {
+    const response = await fetch(url, fetchOptions);
+    
+    // Handle different response types
+    let data;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    return { response, data };
+  } catch (error) {
+    throw new Error(`Request failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+    const workflowId = searchParams.get('workflowId');
+    const canvasId = searchParams.get('canvasId');
+
+    const config = getFlowiseConfig();
+
+    switch (action) {
+      case 'delete_workflow':
+        if (!workflowId) {
+          return NextResponse.json(
+            { error: 'ID do workflow é obrigatório' },
+            { status: 400 }
+          );
+        }
+        return await handleDeleteWorkflow(config, workflowId);
+      
+      default:
+        return NextResponse.json(
+          { error: 'Ação não suportada' },
+          { status: 400 }
+        );
+    }
+  } catch (error) {
+    console.error('Erro na API de sincronização Flowise (DELETE):', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+    const canvasId = searchParams.get('canvasId');
+    const chatflowId = searchParams.get('chatflowId');
+
+    const config = getFlowiseConfig();
+
+    switch (action) {
+      case 'test_connection':
+        return await handleTestConnection(config);
+      
+      case 'get_health':
+        return await handleGetHealth(config);
+      
+      case 'get_workflows':
+        return await handleGetWorkflows(config);
+      
+      case 'get_assistants':
+        return await handleGetAssistants(config);
+      
+      case 'get_chatflow':
+        if (!chatflowId) {
+          return NextResponse.json(
+            { error: 'ID do chatflow é obrigatório' },
+            { status: 400 }
+          );
+        }
+        return await handleGetChatflow(config, chatflowId);
+      
+      case 'sync_canvas':
+        if (!canvasId) {
+          return NextResponse.json(
+            { error: 'ID do canvas é obrigatório' },
+            { status: 400 }
+          );
+        }
+        return await handleSyncCanvas(config, canvasId);
+      
+      case 'sync_canvas_nodes':
+        if (!canvasId) {
+          return NextResponse.json(
+            { error: 'ID do canvas é obrigatório' },
+            { status: 400 }
+          );
+        }
+        return await handleSyncCanvasNodes(config, canvasId);
+      
+      default:
+        return NextResponse.json(
+          { error: 'Ação não suportada' },
+          { status: 400 }
+        );
+    }
+  } catch (error) {
+    console.error('Erro na API de sincronização Flowise:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { action, canvasId, config } = body;
+
+    // Criar sincronizador com configuração apropriada
+    const syncConfig = config || getFlowiseConfig();
+
+    switch (action) {
+      case 'test_connection':
+        return await handleTestConnection(syncConfig);
+      
+      case 'sync_canvas':
+        return await handleSyncCanvas(syncConfig, canvasId);
+      
+      case 'sync_canvas_nodes':
+        return await handleSyncCanvasNodes(syncConfig, canvasId, body.syncData);
+      
+      case 'get_health':
+        return await handleGetHealth(syncConfig);
+      
+      case 'get_workflows':
+        return await handleGetWorkflows(syncConfig, body.filters);
+      
+      case 'get_assistants':
+        return await handleGetAssistants(syncConfig, body.filters);
+      
+      case 'get_chatflow':
+        return await handleGetChatflow(syncConfig, body.chatflowId);
+      
+      case 'update_chatflow':
+        return await handleUpdateChatflow(syncConfig, body.chatflowId, body.updateData);
+      
+      case 'export_workflow':
+        return await handleExportWorkflow(syncConfig, body.canvasId, body.workflowData);
+      
+      case 'get_tools':
+        return await handleGetTools(syncConfig, body.filters);
+      
+      case 'get_variables':
+        return await handleGetVariables(syncConfig, body.filters);
+      
+      case 'get_document_stores':
+        return await handleGetDocumentStores(syncConfig, body.filters);
+      
+      case 'get_chat_messages':
+        return await handleGetChatMessages(syncConfig, body.filters);
+      
+      case 'create_tool':
+        return await handleCreateTool(syncConfig, body.toolData);
+      
+      case 'create_variable':
+        return await handleCreateVariable(syncConfig, body.variableData);
+      
+      default:
+        return NextResponse.json(
+          { error: 'Ação não suportada' },
+          { status: 400 }
+        );
+    }
+  } catch (error) {
+    console.error('Erro na API de sincronização Flowise:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleTestConnection(config: any) {
+  try {
+    // Teste simples de conexão com a instância externa
+    const { response, data } = await makeFlowiseRequest('/', { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Conexão com Flowise externo estabelecida com sucesso',
+        data: {
+          status: response.status,
+          statusText: response.statusText,
+          baseUrl: config.baseUrl,
+          hasAuth: !!config.apiKey && config.apiKey !== 'your_flowise_api_key_here'
+        }
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Falha ao conectar com o servidor Flowise',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json({
+      success: false,
+      message: 'Erro ao testar conexão com Flowise',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+async function handleSyncCanvas(config: any, canvasId: string) {
+  try {
+    if (!canvasId) {
+      return NextResponse.json(
+        { error: 'ID do canvas é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    // Testar conexão primeiro
+    const connectionTest = await handleTestConnection(config);
+    const connectionData = await connectionTest.json();
+    
+    if (!connectionData.success) {
+      return NextResponse.json(connectionData);
+    }
+
+    // Tentar obter dados do canvas
+    try {
+      const { response, data } = await makeFlowiseRequest(`/api/v1/chatflows/${canvasId}`, { method: 'GET' });
+
+      if (response.ok) {
+        return NextResponse.json({
+          success: true,
+          message: 'Canvas obtido com sucesso',
+          data: {
+            canvas: data,
+            syncNeeded: false,
+            outdatedNodes: []
+          }
+        });
+      } else {
+        return NextResponse.json({
+          success: false,
+          message: 'Canvas não encontrado',
+          error: `HTTP ${response.status}: ${response.statusText}`,
+          data
+        });
+      }
+    } catch (error) {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao obter dados do canvas',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao sincronizar canvas', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleGetHealth(config: any) {
+  try {
+    // Tentar obter status de saúde do Flowise
+    const { response, data } = await makeFlowiseRequest('/api/v1/health', { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Status de saúde obtido com sucesso',
+        data
+      });
+    } else {
+      // Se o endpoint de saúde não existir, tentar um endpoint alternativo
+      try {
+        const { response: chatflowsResponse, data: chatflowsData } = await makeFlowiseRequest('/api/v1/chatflows', { method: 'GET' });
+
+        if (chatflowsResponse.ok) {
+          return NextResponse.json({
+            success: true,
+            message: 'Servidor Flowise está respondendo',
+            data: {
+              status: 'healthy',
+              message: 'Endpoint de saúde não disponível, mas API está respondendo',
+              chatflows: chatflowsData
+            }
+          });
+        } else {
+          return NextResponse.json({
+            success: false,
+            message: 'Servidor Flowise não está respondendo',
+            error: `HTTP ${chatflowsResponse.status}: ${chatflowsResponse.statusText}`,
+            data: chatflowsData
+          });
+        }
+      } catch (fallbackError) {
+        return NextResponse.json({
+          success: false,
+          message: 'Servidor Flowise não está acessível',
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+        });
+      }
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao obter status de saúde', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleGetWorkflows(config: any, filters?: any) {
+  try {
+    // Construir URL com filtros
+    let endpoint = '/api/v1/chatflows';
+    const params = new URLSearchParams();
+    
+    if (filters?.type) params.append('type', filters.type);
+    if (filters?.workspaceId) params.append('workspaceId', filters.workspaceId);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    const { response, data } = await makeFlowiseRequest(endpoint, { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Workflows obtidos com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao obter workflows',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao obter workflows', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleGetAssistants(config: any, filters?: any) {
+  try {
+    // Construir URL com filtros para assistants
+    let endpoint = '/api/v1/assistants';
+    const params = new URLSearchParams();
+    
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.search) params.append('search', filters.search);
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    const { response, data } = await makeFlowiseRequest(endpoint, { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Assistants obtidos com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao obter assistants',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao obter assistants', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleGetChatflow(config: any, chatflowId: string) {
+  try {
+    if (!chatflowId) {
+      return NextResponse.json(
+        { error: 'ID do chatflow é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    const { response, data } = await makeFlowiseRequest(`/api/v1/chatflows/${chatflowId}`, { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Chatflow obtido com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Chatflow não encontrado',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao obter chatflow', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleUpdateChatflow(config: any, chatflowId: string, updateData: any) {
+  try {
+    if (!chatflowId) {
+      return NextResponse.json(
+        { error: 'ID do chatflow é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    const { response, data } = await makeFlowiseRequest(`/api/v1/chatflows/${chatflowId}`, { 
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Chatflow atualizado com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao atualizar chatflow',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao atualizar chatflow', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleSyncCanvasNodes(config: any, canvasId: string, syncData?: any) {
+  try {
+    if (!canvasId) {
+      return NextResponse.json(
+        { error: 'ID do canvas é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    // Primeiro, obter o canvas atual
+    const { response, data: canvasData } = await makeFlowiseRequest(`/api/v1/chatflows/${canvasId}`, { method: 'GET' });
+
+    if (!response.ok) {
+      return NextResponse.json({
+        success: false,
+        message: 'Canvas não encontrado',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data: canvasData
+      });
+    }
+
+    // Simular sincronização de nós (em um cenário real, isso poderia comparar com dados locais)
+    const nodes = canvasData.nodes || [];
+    const edges = canvasData.edges || [];
+    
+    // Preparar dados de sincronização
+    const syncResult = {
+      canvasId: canvasId,
+      totalNodes: nodes.length,
+      totalEdges: edges.length,
+      syncTimestamp: new Date().toISOString(),
+      syncData: syncData || {},
+      nodes: nodes.map(node => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: node.data
+      })),
+      edges: edges.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle,
+        targetHandle: edge.targetHandle
+      }))
+    };
+
+    return NextResponse.json({
+      success: true,
+      message: 'Nós do canvas sincronizados com sucesso',
+      data: syncResult
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao sincronizar nós do canvas', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+// New handlers for additional Flowise API endpoints
+async function handleGetTools(config: any, filters?: any) {
+  try {
+    let endpoint = '/api/v1/tools';
+    const params = new URLSearchParams();
+    
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    const { response, data } = await makeFlowiseRequest(endpoint, { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Tools obtidos com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao obter tools',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao obter tools', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleGetVariables(config: any, filters?: any) {
+  try {
+    let endpoint = '/api/v1/variables';
+    const params = new URLSearchParams();
+    
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    const { response, data } = await makeFlowiseRequest(endpoint, { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Variáveis obtidas com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao obter variáveis',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao obter variáveis', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleGetDocumentStores(config: any, filters?: any) {
+  try {
+    let endpoint = '/api/v1/document-stores';
+    const params = new URLSearchParams();
+    
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    const { response, data } = await makeFlowiseRequest(endpoint, { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Document stores obtidos com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao obter document stores',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao obter document stores', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleGetChatMessages(config: any, filters?: any) {
+  try {
+    let endpoint = '/api/v1/chat-messages';
+    const params = new URLSearchParams();
+    
+    if (filters?.chatflowId) params.append('chatflowId', filters.chatflowId);
+    if (filters?.sessionId) params.append('sessionId', filters.sessionId);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.offset) params.append('offset', filters.offset.toString());
+    
+    if (params.toString()) {
+      endpoint += `?${params.toString()}`;
+    }
+
+    const { response, data } = await makeFlowiseRequest(endpoint, { method: 'GET' });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Chat messages obtidos com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao obter chat messages',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao obter chat messages', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleCreateTool(config: any, toolData: any) {
+  try {
+    const { response, data } = await makeFlowiseRequest('/api/v1/tools', {
+      method: 'POST',
+      body: JSON.stringify(toolData)
+    });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Tool criado com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao criar tool',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao criar tool', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleCreateVariable(config: any, variableData: any) {
+  try {
+    const { response, data } = await makeFlowiseRequest('/api/v1/variables', {
+      method: 'POST',
+      body: JSON.stringify(variableData)
+    });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Variável criada com sucesso',
+        data
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao criar variável',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao criar variável', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleExportWorkflow(config: any, canvasId: string, workflowData: any) {
+  let logId: string | null = null;
+  
+  try {
+    if (!canvasId) {
+      return NextResponse.json(
+        { error: 'ID do canvas é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    if (!workflowData) {
+      return NextResponse.json(
+        { error: 'Dados do workflow são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Registrar tentativa de exportação
+    try {
+      const logResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/flowise-workflows/export-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'log_export_attempt',
+          data: {
+            workflowId: workflowData.id || 'unknown',
+            workflowName: workflowData.name || 'Unknown Workflow',
+            canvasId: canvasId,
+            exportData: workflowData
+          }
+        })
+      });
+      
+      if (logResponse.ok) {
+        const logResult = await logResponse.json();
+        logId = logResult.logId;
+      }
+    } catch (logError) {
+      console.warn('Erro ao registrar log de tentativa:', logError);
+    }
+
+    // Testar conexão primeiro
+    const connectionTest = await handleTestConnection(config);
+    const connectionData = await connectionTest.json();
+    
+    if (!connectionData.success) {
+      // Registrar erro de conexão
+      if (logId) {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/flowise-workflows/export-log`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'log_export_error',
+              data: {
+                logId,
+                workflowId: workflowData.id || 'unknown',
+                workflowName: workflowData.name || 'Unknown Workflow',
+                canvasId: canvasId,
+                error: { message: 'Falha na conexão com Flowise', details: connectionData },
+                exportData: workflowData
+              }
+            })
+          });
+        } catch (logError) {
+          console.warn('Erro ao registrar log de erro de conexão:', logError);
+        }
+      }
+      
+      return NextResponse.json(connectionData);
+    }
+
+    // Preparar dados para exportação no formato esperado pelo Flowise
+    const exportPayload = {
+      name: workflowData.name,
+      description: workflowData.description || '',
+      type: workflowData.type || 'CHATFLOW',
+      flowData: typeof workflowData.flowData === 'string' ? workflowData.flowData : JSON.stringify(workflowData.flowData || {
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 }
+      }),
+      deployed: workflowData.deployed || false,
+      isPublic: workflowData.isPublic || false,
+      category: workflowData.category || 'general'
+    };
+
+    // Adicionar campos opcionais apenas se forem válidos
+    if (workflowData.chatbotConfig && workflowData.chatbotConfig !== '[object Object]') {
+      try {
+        // Tentar fazer parse para verificar se é JSON válido
+        JSON.parse(workflowData.chatbotConfig);
+        exportPayload.chatbotConfig = workflowData.chatbotConfig;
+      } catch (e) {
+        // Se não for JSON válido, não incluir o campo
+        console.warn('chatbotConfig inválido ignorado:', workflowData.chatbotConfig);
+      }
+    }
+
+    if (workflowData.apiConfig && workflowData.apiConfig !== '[object Object]') {
+      try {
+        // Tentar fazer parse para verificar se é JSON válido
+        JSON.parse(workflowData.apiConfig);
+        exportPayload.apiConfig = workflowData.apiConfig;
+      } catch (e) {
+        // Se não for JSON válido, não incluir o campo
+        console.warn('apiConfig inválido ignorado:', workflowData.apiConfig);
+      }
+    }
+
+    console.log('🚀 Iniciando exportação para Flowise:', {
+      canvasId,
+      action: 'update_first',
+      payloadSize: JSON.stringify(exportPayload).length
+    });
+
+    // ESTRATÉGIA MELHORADA: Verificar se o workflow existe primeiro
+    let workflowExists = false;
+    let createInstead = false;
+    
+    try {
+      const checkResponse = await makeFlowiseRequest(`/api/v1/chatflows/${canvasId}`, { method: 'GET' });
+      workflowExists = checkResponse.response.ok;
+      
+      if (!workflowExists) {
+        console.log('📋 Workflow não existe, será criado um novo:', {
+          canvasId,
+          status: checkResponse.response.status,
+          statusText: checkResponse.response.statusText
+        });
+        createInstead = true;
+      }
+    } catch (checkError) {
+      console.warn('Erro ao verificar existência do workflow, tentando criar:', checkError);
+      createInstead = true;
+    }
+
+    let finalResult = null;
+    let actionTaken = '';
+
+    if (!createInstead) {
+      // Tentar atualizar o workflow existente
+      try {
+        const updateStartTime = Date.now();
+        const { response: updateResponse, data: updateData } = await makeFlowiseRequest(`/api/v1/chatflows/${canvasId}`, {
+          method: 'PUT',
+          body: JSON.stringify(exportPayload)
+        });
+        
+        const updateDuration = Date.now() - updateStartTime;
+        
+        console.log('📝 Resposta da atualização:', {
+          status: updateResponse.status,
+          statusText: updateResponse.statusText,
+          duration: updateDuration,
+          dataSize: JSON.stringify(updateData).length
+        });
+
+        if (updateResponse.ok) {
+          finalResult = { response: updateResponse, data: updateData, duration: updateDuration };
+          actionTaken = 'updated';
+        } else {
+          // Se a atualização falhar com "not found", tentar criar
+          if (updateData?.message?.includes('not found') || updateResponse.status === 404) {
+            console.log('❌ Workflow não encontrado durante atualização, tentando criar...');
+            createInstead = true;
+          } else {
+            throw new Error(`Falha na atualização: HTTP ${updateResponse.status}: ${updateResponse.statusText}`);
+          }
+        }
+      } catch (updateError) {
+        console.warn('Erro na atualização, tentando criar novo:', updateError);
+        createInstead = true;
+      }
+    }
+
+    // Se necessário, criar um novo workflow
+    if (createInstead && !finalResult) {
+      try {
+        // Para criação, não usar o canvasId original, gerar um novo ID
+        const createStartTime = Date.now();
+        const { response: createResponse, data: createData } = await makeFlowiseRequest('/api/v1/chatflows', {
+          method: 'POST',
+          body: JSON.stringify(exportPayload)
+        });
+        
+        const createDuration = Date.now() - createStartTime;
+        
+        console.log('📝 Resposta da criação:', {
+          status: createResponse.status,
+          statusText: createResponse.statusText,
+          duration: createDuration,
+          dataSize: JSON.stringify(createData).length
+        });
+
+        if (createResponse.ok) {
+          finalResult = { response: createResponse, data: createData, duration: createDuration };
+          actionTaken = 'created';
+        } else {
+          throw new Error(`Falha na criação: HTTP ${createResponse.status}: ${createResponse.statusText}`);
+        }
+      } catch (createError) {
+        console.error('💥 Erro na criação do workflow:', createError);
+        throw createError;
+      }
+    }
+
+    if (finalResult) {
+      // Registrar sucesso
+      if (logId) {
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/flowise-workflows/export-log`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'log_export_success',
+              data: {
+                logId,
+                workflowId: workflowData.id || 'unknown',
+                canvasId: finalResult.data.id || canvasId,
+                response: { 
+                  status: finalResult.response.status, 
+                  data: finalResult.data,
+                  action: actionTaken
+                },
+                action: actionTaken
+              }
+            })
+          });
+        } catch (logError) {
+          console.warn('Erro ao registrar log de sucesso:', logError);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Workflow ${actionTaken === 'updated' ? 'atualizado' : 'criado'} com sucesso no Flowise externo`,
+        data: {
+          canvasId: finalResult.data.id || canvasId,
+          action: actionTaken,
+          exportedData: exportPayload,
+          flowiseResponse: finalResult.data,
+          performance: { duration: finalResult.duration }
+        }
+      });
+    }
+
+    throw new Error('Nenhuma operação de exportação foi concluída com sucesso');
+
+  } catch (error) {
+    console.error('💥 Erro durante exportação:', error);
+
+    // Registrar erro detalhado
+    const errorDetails = {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : '',
+      canvasId: canvasId,
+      exportData: workflowData,
+      errorType: error instanceof Error ? error.name : 'UnknownError',
+      timestamp: new Date().toISOString()
+    };
+
+    if (logId) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/flowise-workflows/export-log`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'log_export_error',
+            data: {
+              logId,
+              workflowId: workflowData.id || 'unknown',
+              workflowName: workflowData.name || 'Unknown Workflow',
+              canvasId: canvasId,
+              error: errorDetails,
+              exportData: workflowData
+            }
+          })
+        });
+      } catch (logError) {
+        console.warn('Erro ao registrar log de erro:', logError);
+      }
+    }
+
+    return NextResponse.json({
+      success: false,
+      message: 'Erro ao exportar workflow para o Flowise',
+      error: errorDetails.message,
+      debug: errorDetails
+    });
+  }
+}
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'log_export_error',
+            data: {
+              logId,
+              workflowId: workflowData?.id || 'unknown',
+              workflowName: workflowData?.name || 'Unknown Workflow',
+              canvasId: canvasId,
+              error: {
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : '',
+                type: 'CRITICAL_ERROR'
+              },
+              exportData: workflowData,
+              stackTrace: error instanceof Error ? error.stack : ''
+            }
+          })
+        });
+      } catch (logError) {
+        console.warn('Erro ao registrar log de erro crítico:', logError);
+      }
+    }
+
+    return NextResponse.json(
+      { 
+        error: 'Erro ao exportar workflow', 
+        details: error instanceof Error ? error.message : String(error),
+        debug: {
+          timestamp: new Date().toISOString(),
+          canvasId: canvasId,
+          workflowData: workflowData ? { name: workflowData.name, type: workflowData.type } : null
+        }
+      },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleDeleteWorkflow(config: any, workflowId: string) {
+  try {
+    if (!workflowId) {
+      return NextResponse.json(
+        { error: 'ID do workflow é obrigatório' },
+        { status: 400 }
+      );
+    }
+
+    // Fazer requisição DELETE para a API do Flowise
+    const { response, data } = await makeFlowiseRequest(`/api/v1/chatflows/${workflowId}`, { 
+      method: 'DELETE'
+    });
+
+    if (response.ok) {
+      return NextResponse.json({
+        success: true,
+        message: 'Workflow deletado com sucesso',
+        data: {
+          workflowId: workflowId,
+          deleted: true
+        }
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        message: 'Erro ao deletar workflow',
+        error: `HTTP ${response.status}: ${response.statusText}`,
+        data
+      });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Erro ao deletar workflow', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}

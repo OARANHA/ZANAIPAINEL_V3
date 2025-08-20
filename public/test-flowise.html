@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Flowise Workflows</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste da Interface Flowise Workflows</h1>
+        
+        <div class="test-section" id="test-api">
+            <h2>1. Testar API de Workflows</h2>
+            <button onclick="testWorkflowsAPI()">Testar API</button>
+            <div id="api-result"></div>
+        </div>
+
+        <div class="test-section" id="test-sync">
+            <h2>2. Testar API de Sincronização</h2>
+            <button onclick="testSyncAPI()">Testar Sincronização</button>
+            <div id="sync-result"></div>
+        </div>
+
+        <div class="test-section" id="test-export">
+            <h2>3. Testar Exportação de Workflow</h2>
+            <button onclick="testExport()">Testar Exportação</button>
+            <div id="export-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Acessar Interface</h2>
+            <a href="/flowise-workflows" target="_blank">
+                <button>Abrir /flowise-workflows</button>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        async function testWorkflowsAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<div class="loading">Testando...</div>';
+            
+            try {
+                const response = await fetch('/api/v1/flowise-workflows', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'get_workflows',
+                        data: { page: 1, limit: 10 }
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ API funcionando corretamente</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>Workflows encontrados: ${data.workflows?.length || 0}</p>
+                            ${data.workflows && data.workflows.length > 0 ? `
+                                <p>Primeiro workflow: <strong>${data.workflows[0].name}</strong></p>
+                                <p>Tipo: ${data.workflows[0].type}</p>
+                                <p>Complexidade: ${data.workflows[0].complexityScore}/100</p>
+                            ` : ''}
+                            <details>
+                                <summary>Ver resposta completa</summary>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Erro na API</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>Erro: ${data.error || 'Erro desconhecido'}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Erro de conexão</h3>
+                        <p>Erro: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testSyncAPI() {
+            const resultDiv = document.getElementById('sync-result');
+            resultDiv.innerHTML = '<div class="loading">Testando...</div>';
+            
+            try {
+                const response = await fetch('/api/flowise-external-sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'test_connection'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Conexão com Flowise estabelecida</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>${data.message}</p>
+                            <details>
+                                <summary>Ver resposta completa</summary>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Falha na conexão</h3>
+                            <p>Status: ${response.status}</p>
+                            <p>Erro: ${data.message || data.error || 'Erro desconhecido'}</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Erro de conexão</h3>
+                        <p>Erro: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testExport() {
+            const resultDiv = document.getElementById('export-result');
+            resultDiv.innerHTML = '<div class="loading">Testando exportação...</div>';
+            
+            try {
+                // Primeiro obter um workflow
+                const workflowsResponse = await fetch('/api/v1/flowise-workflows', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'get_workflows',
+                        data: { page: 1, limit: 1 }
+                    })
+                });
+
+                const workflowsData = await workflowsResponse.json();
+                
+                if (!workflowsResponse.ok || !workflowsData.success || !workflowsData.workflows || workflowsData.workflows.length === 0) {
+                    throw new Error('Nenhum workflow encontrado para testar exportação');
+                }
+
+                const workflow = workflowsData.workflows[0];
+                
+                // Testar exportação
+                const exportResponse = await fetch('/api/flowise-external-sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'export_workflow',
+                        canvasId: workflow.flowiseId,
+                        workflowData: {
+                            name: workflow.name,
+                            description: workflow.description || '',
+                            type: workflow.type,
+                            flowData: workflow.flowData,
+                            deployed: workflow.deployed,
+                            isPublic: workflow.isPublic,
+                            category: workflow.category || 'general'
+                        }
+                    })
+                });
+
+                const exportData = await exportResponse.json();
+                
+                if (exportResponse.ok && exportData.success) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ Exportação testada com sucesso</h3>
+                            <p>Workflow: ${workflow.name}</p>
+                            <p>Status: ${exportResponse.status}</p>
+                            <p>${exportData.message || 'Exportação concluída'}</p>
+                            <details>
+                                <summary>Ver resposta completa</summary>
+                                <pre>${JSON.stringify(exportData, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Falha na exportação</h3>
+                            <p>Workflow: ${workflow.name}</p>
+                            <p>Status: ${exportResponse.status}</p>
+                            <p>Erro: ${exportData.error || exportData.message || 'Erro desconhecido'}</p>
+                            <pre>${JSON.stringify(exportData, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Erro na exportação</h3>
+                        <p>Erro: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Testar automaticamente quando a página carregar
+        window.onload = function() {
+            console.log('Página carregada. Testes prontos para executar.');
+        };
+    </script>
+</body>
+</html>
