@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, BookOpen, Category, Settings, Download, RefreshCw } from 'lucide-react';
+import { Search, BookOpen, FolderOpen, Settings, Download, RefreshCw } from 'lucide-react';
 
 interface FlowiseNode {
   categoria: string;
@@ -39,7 +39,7 @@ export function FlowiseNodeCatalog({
   const [catalog, setCatalog] = useState<FlowiseNodeCatalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [recommendedNodes, setRecommendedNodes] = useState<FlowiseNode[]>([]);
   const [selectedNodes, setSelectedNodes] = useState<FlowiseNode[]>([]);
 
@@ -115,7 +115,7 @@ export function FlowiseNodeCatalog({
     
     let nodes = catalog.nodes;
     
-    if (selectedCategory) {
+    if (selectedCategory && selectedCategory !== 'all') {
       nodes = nodes.filter(node => node.categoria === selectedCategory);
     }
     
@@ -216,7 +216,7 @@ export function FlowiseNodeCatalog({
                 <SelectValue placeholder="Selecionar categoria" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as categorias</SelectItem>
+                <SelectItem value="all">Todas as categorias</SelectItem>
                 {catalog.categories.map(category => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -308,7 +308,7 @@ export function FlowiseNodeCatalog({
             <Card key={category}>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Category className="h-4 w-4" />
+                                     <FolderOpen className="h-4 w-4" />
                   {category}
                 </CardTitle>
               </CardHeader>

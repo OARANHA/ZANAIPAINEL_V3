@@ -463,7 +463,7 @@ export default function MCPAgentIntegration() {
                         <SelectValue placeholder="Selecione uma ferramenta (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todas as ferramentas</SelectItem>
+                        <SelectItem value="all">Todas as ferramentas</SelectItem>
                         {getServerTools(newConnection.serverId).map((tool) => (
                           <SelectItem key={tool.id} value={tool.id}>
                             {tool.name}
