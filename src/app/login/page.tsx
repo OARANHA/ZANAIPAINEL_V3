@@ -33,7 +33,7 @@ export default function LoginPage() {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Lógica de redirecionamento baseada no tipo de usuário
-      if (email === 'admin@zanai.com') {
+      if (email === 'superadmin@zanai.com') {
         // Super Admin
         console.log('Setting SUPER_ADMIN role');
         document.cookie = 'isAuthenticated=true; path=/; max-age=86400';
@@ -46,7 +46,7 @@ export default function LoginPage() {
           console.log('Redirecting to /admin for super admin');
           window.location.href = '/admin';
         }, 100);
-      } else if (email.includes('empresa') || email.includes('corporation') || email === 'admin@mix.com') {
+      } else if (email.includes('empresa') || email.includes('corporation') || email === 'admin@mix.com' || email === 'admin@zanai.com.br') {
         // Empresa
         console.log('Setting COMPANY_ADMIN role');
         document.cookie = 'isAuthenticated=true; path=/; max-age=86400';
@@ -193,7 +193,7 @@ export default function LoginPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => {
-                    setEmail('admin@zanai.com');
+                    setEmail('superadmin@zanai.com');
                     setPassword('admin123');
                   }}
                 >
@@ -205,7 +205,7 @@ export default function LoginPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => {
-                    setEmail('admin@mix.com');
+                    setEmail('admin@zanai.com.br');
                     setPassword('empresa');
                   }}
                 >

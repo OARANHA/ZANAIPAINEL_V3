@@ -13,7 +13,9 @@
     "db:reset": "prisma migrate reset",
     "db:seed": "tsx prisma/simple-seed.ts",
     "db:seed:backup": "tsx prisma/backup-seed.ts",
-    "db:seed:quick": "tsx prisma/quick-backup.ts"
+    "db:seed:quick": "tsx prisma/quick-backup.ts",
+    "setup": "node setup.js",
+    "postinstall": "npm run setup"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",

@@ -14,9 +14,14 @@ async function main() {
   console.log('👥 Criando usuários...');
   const usersData = [
     {
-      email: 'admin@zanai.com',
-      name: 'Administrador Zanai',
-      role: 'admin',
+      email: 'superadmin@zanai.com',
+      name: 'Super Administrador',
+      role: 'SUPER_ADMIN',
+    },
+    {
+      email: 'admin@zanai.com.br',
+      name: 'Administrador Empresa',
+      role: 'COMPANY_ADMIN',
     },
     {
       email: 'joao.silva@empresa.com',
@@ -50,7 +55,7 @@ async function main() {
     }
   }
 
-  const [adminUser, regularUser, companyUser] = createdUsers;
+  const [superAdminUser, companyAdminUser, regularUser, companyUser] = createdUsers;
 
   // Criar empresas
   console.log('🏢 Criando empresas...');
@@ -164,7 +169,7 @@ async function main() {
         language: 'pt-BR',
         autoSave: true,
       }),
-      userId: adminUser?.id || '',
+      userId: superAdminUser?.id || '',
     },
     {
       name: 'Workspace de Testes',
@@ -185,7 +190,7 @@ async function main() {
         autoSave: true,
         notifications: true,
       }),
-      userId: companyUser?.id || '',
+      userId: companyAdminUser?.id || '',
     },
   ];
 
@@ -243,7 +248,7 @@ personality: profissional, analítico, comunicativo`,
 - Proposta de soluções`,
       status: 'active',
       workspaceId: workspace1?.id || '',
-      userId: adminUser?.id,
+      userId: superAdminUser?.id,
     },
     {
       name: 'Especialista em Marketing Digital',
@@ -271,7 +276,7 @@ personality: criativo, analítico, estratégico`,
 - Métricas de engajamento`,
       status: 'active',
       workspaceId: workspace1?.id || '',
-      userId: adminUser?.id,
+      userId: superAdminUser?.id,
     },
     {
       name: 'Desenvolvedor Full Stack',
@@ -327,7 +332,7 @@ personality: preciso, cauteloso, informativo`,
 - Crimes cibernéticos`,
       status: 'active',
       workspaceId: workspace3?.id || '',
-      userId: companyUser?.id,
+      userId: companyAdminUser?.id,
     },
     {
       name: 'Agente de Suporte',
