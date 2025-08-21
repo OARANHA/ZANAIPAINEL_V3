@@ -8,10 +8,6 @@ export function middleware(request: NextRequest) {
   const isAuthenticated = request.cookies.get('isAuthenticated')?.value === 'true';
   const userRole = request.cookies.get('userRole')?.value;
   
-  console.log('Middleware: Checking access for:', pathname);
-  console.log('Middleware: isAuthenticated:', isAuthenticated);
-  console.log('Middleware: userRole:', userRole);
-  
   // Rotas que não precisam de autenticação
   const publicRoutes = ['/', '/login', '/register', '/planos', '/contato', '/servicos', '/demonstracao', '/doc', 'agentes', '/automacao', '/admin/login', '/admin/logout', '/flowise-external-sync'];
   
@@ -70,12 +66,9 @@ export function middleware(request: NextRequest) {
 
   // /painel = Painel para usuários normais (FREE, INICIANTE, PROFISSIONAL)
   if (pathname.startsWith('/painel')) {
-    console.log('Middleware: Checking /painel access for role:', userRole);
     if (!['FREE', 'INICIANTE', 'PROFISSIONAL'].includes(userRole || '')) {
-      console.log('Middleware: Access denied for /painel, redirecting to /login');
       return NextResponse.redirect(new URL('/login', request.url));
     }
-    console.log('Middleware: Access granted for /painel');
   }
   
   // /dashboard = Redireciona para /painel (não deve existir mais)
