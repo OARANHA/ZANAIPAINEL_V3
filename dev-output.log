@@ -1,0 +1,63 @@
+
+> urbandev-zanai-merged@0.1.0 dev
+> nodemon --exec "npx tsx server.ts" --watch server.ts --watch src --ext ts,tsx,js,jsx 2>&1 | tee dev.log
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): server.ts src/**/*[39m
+[33m[nodemon] watching extensions: ts,tsx,js,jsx[39m
+[32m[nodemon] starting `npx tsx server.ts`[39m
+Error: listen EADDRINUSE: address already in use :::3000
+    at <unknown> (Error: listen EADDRINUSE: address already in use :::3000)
+    at <unknown> (server.ts:27:5) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `npx tsx server.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `npx tsx server.ts`[39m
+Aborted
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `npx tsx server.ts`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `npx tsx server.ts`[39m
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `npx tsx server.ts`[39m
+Aborted
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `npx tsx server.ts`[39m
+> Ready on http://localhost:3000
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 745ms (108 modules)
+Middleware: Checking access for: /
+Middleware: isAuthenticated: true
+Middleware: userRole: SUPER_ADMIN
+ ○ Compiling / ...
+ ✓ Compiled / in 7.1s (1131 modules)
+ GET / 200 in 8695ms
+Middleware: Checking access for: /
+Middleware: isAuthenticated: true
+Middleware: userRole: SUPER_ADMIN
+ GET / 200 in 320ms
+ ✓ Compiled /favicon.ico in 475ms (641 modules)
+ GET /favicon.ico 200 in 638ms
+Middleware: Checking access for: /
+Middleware: isAuthenticated: true
+Middleware: userRole: SUPER_ADMIN
+ GET / 200 in 556ms
+Middleware: Checking access for: /
+Middleware: isAuthenticated: true
+Middleware: userRole: SUPER_ADMIN
+ GET / 200 in 307ms
+Middleware: Checking access for: /
+Middleware: isAuthenticated: true
+Middleware: userRole: SUPER_ADMIN
+ GET / 200 in 416ms
