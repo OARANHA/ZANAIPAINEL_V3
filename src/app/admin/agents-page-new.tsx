@@ -360,7 +360,7 @@ ${agent.description || 'Nenhuma descrição fornecida.'}
 
 ## Definição de Papel
 
-${agent.roleDefinition || \`Você é um agente especialista chamado ${agent.name}.\`}
+${agent.roleDefinition || `Você é um agente especialista chamado ${agent.name}.`}
 
 ---
 
@@ -453,14 +453,14 @@ ${JSON.stringify(agent.groups, null, 2)}
   const shareAgent = async (agent: Agent) => {
     try {
       // Simular compartilhamento - gerar URL
-      const shareUrl = \`\${window.location.origin}/shared/agent/\${agent.id}\`;
+      const shareUrl = `${window.location.origin}/shared/agent/${agent.id}`;
       
       // Copiar para clipboard
       await navigator.clipboard.writeText(shareUrl);
       
       toast({
         title: "Link copiado!",
-        description: \`O link de compartilhamento do agente "\${agent.name}" foi copiado para a área de transferência.\`,
+        description: `O link de compartilhamento do agente "${agent.name}" foi copiado para a área de transferência.`,
         variant: "default",
       });
       
@@ -468,7 +468,7 @@ ${JSON.stringify(agent.groups, null, 2)}
     } catch (error) {
       toast({
         title: "Erro ao compartilhar agente",
-        description: \`Ocorreu um erro ao tentar compartilhar o agente "\${agent.name}".\`,
+        description: `Ocorreu um erro ao tentar compartilhar o agente "${agent.name}".`,
         variant: "destructive",
       });
       console.error('Erro ao compartilhar agente:', error);
@@ -485,20 +485,20 @@ ${JSON.stringify(agent.groups, null, 2)}
         await loadAgents();
         toast({
           title: "Agente excluído com sucesso!",
-          description: \`O agente "\${agent.name}" foi excluído permanentemente.\`,
+          description: `O agente "${agent.name}" foi excluído permanentemente.`,
           variant: "default",
         });
       } else {
         toast({
           title: "Erro ao excluir agente",
-          description: \`Não foi possível excluir o agente "\${agent.name}".\`,
+          description: `Não foi possível excluir o agente "${agent.name}".`,
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Erro ao excluir agente",
-        description: \`Ocorreu um erro ao tentar excluir o agente "\${agent.name}".\`,
+        description: `Ocorreu um erro ao tentar excluir o agente "${agent.name}".`,
         variant: "destructive",
       });
       console.error('Erro ao excluir agente:', error);
@@ -563,21 +563,21 @@ ${JSON.stringify(agent.groups, null, 2)}
         const result = await response.json();
         toast({
           title: "Agente exportado para Flowise!",
-          description: \`O agente "\${agent.name}" foi exportado com sucesso.\`,
+          description: `O agente "${agent.name}" foi exportado com sucesso.`,
           variant: "default",
         });
         console.log('Agente exportado para Flowise:', result);
       } else {
         toast({
           title: "Erro ao exportar para Flowise",
-          description: \`Não foi possível exportar o agente "\${agent.name}" para o Flowise.\`,
+          description: `Não foi possível exportar o agente "${agent.name}" para o Flowise.`,
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Erro ao exportar para Flowise",
-        description: \`Ocorreu um erro ao tentar exportar o agente "\${agent.name}".\`,
+        description: `Ocorreu um erro ao tentar exportar o agente "${agent.name}".`,
         variant: "destructive",
       });
       console.error('Erro ao exportar para Flowise:', error);
