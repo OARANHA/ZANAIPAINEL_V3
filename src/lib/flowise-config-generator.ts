@@ -429,3 +429,10 @@ Answer:`,
     }
   }
 }
+
+/**
+ * Função de conveniência para gerar configuração Flowise
+ */
+export async function generateFlowiseConfig(agentData: any): Promise<FlowiseAgentConfig> {
+  return await FlowiseConfigGenerator.generateCompleteConfig(agentData);
+}

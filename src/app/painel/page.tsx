@@ -35,7 +35,13 @@ interface StatsCard {
 }
 
 export default function PainelPage() {
-  console.log('PainelPage carregada - pathname:', window.location.pathname);
+  const [pathname, setPathname] = useState('');
+  
+  useEffect(() => {
+    setPathname('/painel');
+  }, []);
+  
+  console.log('PainelPage carregada - pathname:', pathname);
   
   const [stats, setStats] = useState<StatsCard[]>([
     {

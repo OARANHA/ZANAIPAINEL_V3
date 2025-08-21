@@ -32,12 +32,15 @@ import {
   Eye,
   Rocket,
   Cpu,
-  Database
+  Database,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import EditAgentDialog from '@/components/agents/EditAgentDialog';
 import AgentDetailsDialog from '@/components/agents/AgentDetailsDialog';
 import AgentActionsMenu from '@/components/agents/AgentActionsMenu';
 import ExportFormatDialog from '@/components/agents/ExportFormatDialog';
+import FunctionalCard from '@/components/FunctionalCard';
 import MainLayout from '@/components/layout/MainLayout';
 import ElegantCard from '@/components/ui/ElegantCard';
 import { useToast } from '@/hooks/use-toast';
@@ -85,6 +88,7 @@ export default function AgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'functional' | 'traditional'>('functional');
   const [newAgent, setNewAgent] = useState({
     name: '',
     description: '',
@@ -562,14 +566,13 @@ ${JSON.stringify(agent.groups, null, 2)}
           description: `O agente "${agent.name}" foi exportado com sucesso.`,
           variant: "default",
         });
-        return result;
+        console.log('Agente exportado para Flowise:', result);
       } else {
         toast({
           title: "Erro ao exportar para Flowise",
           description: `Não foi possível exportar o agente "${agent.name}" para o Flowise.`,
           variant: "destructive",
         });
-        return null;
       }
     } catch (error) {
       toast({
@@ -578,366 +581,250 @@ ${JSON.stringify(agent.groups, null, 2)}
         variant: "destructive",
       });
       console.error('Erro ao exportar para Flowise:', error);
-      return null;
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500';
-      case 'inactive': return 'bg-gray-500';
-      case 'training': return 'bg-blue-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'template': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-      case 'custom': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
-      case 'composed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'template': return Star;
-      case 'custom': return Code;
-      case 'composed': return Users;
-      default: return Brain;
-    }
-  };
-
-  const filteredAgents = Array.isArray(agents) ? agents.filter(agent => {
+  // Filtrar agentes baseado na busca e filtros
+  const filteredAgents = agents.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          agent.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'all' || agent.type === filterType;
-    const matchesWorkspace = !selectedWorkspace || agent.workspaceId === selectedWorkspace;
-    return matchesSearch && matchesType && matchesWorkspace;
-  }) : [];
+    
+    const matchesFilter = filterType === 'all' || 
+                          (filterType === 'active' && agent.status === 'active') ||
+                          (filterType === 'inactive' && agent.status === 'inactive') ||
+                          (filterType === 'template' && agent.type === 'template') ||
+                          (filterType === 'custom' && agent.type === 'custom') ||
+                          (filterType === 'composed' && agent.type === 'composed');
 
-  const agentStats = {
-    total: Array.isArray(agents) ? agents.length : 0,
-    active: Array.isArray(agents) ? agents.filter(a => a.type === 'active').length : 0,
-    templates: Array.isArray(agents) ? agents.filter(a => a.type === 'template').length : 0,
-    custom: Array.isArray(agents) ? agents.filter(a => a.type === 'custom').length : 0
-  };
+    return matchesSearch && matchesFilter;
+  });
+
+  const isArchived = (agent: Agent) => agent.status === 'archived';
 
   return (
-    <MainLayout currentPath={pathname}>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header Section */}
+    <MainLayout>
+      <div className="p-8">
+        {/* Header */}
         <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-            <div className="mb-6 lg:mb-0">
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="relative">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Brain className="w-7 h-7 text-white" />
-                  </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-slate-900"></div>
-                </div>
-                <div>
-                  <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Agentes Inteligentes
-                  </h1>
-                  <p className="text-lg text-muted-foreground mt-1">
-                    Gerencie seus agentes de IA com elegância e eficiência
-                  </p>
-                </div>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Agentes Inteligentes
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Gerencie e execute seus agentes de IA com ações contextuais
+              </p>
             </div>
-            
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-              <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace}>
-                <SelectTrigger className="w-full sm:w-64 h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                  <Users className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Selecione um workspace" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workspaces.map((workspace) => (
-                    <SelectItem key={workspace.id} value={workspace.id}>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4" />
-                        <span>{workspace.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center space-x-4">
+              {/* Toggle View Mode */}
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant={viewMode === 'traditional' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('traditional')}
+                >
+                  <ToggleLeft className="w-4 h-4 mr-1" />
+                  Tradicional
+                </Button>
+                <Button
+                  variant={viewMode === 'functional' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('functional')}
+                >
+                  <ToggleRight className="w-4 h-4 mr-1" />
+                  Funcional
+                </Button>
+              </div>
               
               <Dialog open={isCreateAgentOpen} onOpenChange={setIsCreateAgentOpen}>
                 <DialogTrigger asChild>
-                  <Button className="h-11 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg px-6 font-medium">
-                    <Plus className="w-5 h-5 mr-2" />
-                    Novo Agente
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Criar Agente
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl border-slate-200 dark:border-slate-700">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold">Criar Novo Agente</DialogTitle>
-                    <DialogDescription className="text-base">
-                      Crie um novo agente inteligente com configuração personalizada para potencializar seus projetos.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-foreground mb-2 block">Nome do Agente</label>
-                        <Input
-                          value={newAgent.name}
-                          onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
-                          placeholder="Ex: Analista de Negócios"
-                          className="h-11"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-foreground mb-2 block">Tipo</label>
-                        <Select value={newAgent.type} onValueChange={(value: any) => setNewAgent({ ...newAgent, type: value })}>
-                          <SelectTrigger className="h-11">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="template">
-                              <div className="flex items-center space-x-2">
-                                <Star className="w-4 h-4" />
-                                <span>Template</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="custom">
-                              <div className="flex items-center space-x-2">
-                                <Code className="w-4 h-4" />
-                                <span>Custom</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="composed">
-                              <div className="flex items-center space-x-2">
-                                <Users className="w-4 h-4" />
-                                <span>Composed</span>
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Descrição</label>
-                      <Textarea
-                        value={newAgent.description}
-                        onChange={(e) => setNewAgent({ ...newAgent, description: e.target.value })}
-                        placeholder="Descreva as funcionalidades e especialidades do agente"
-                        className="min-h-20"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Configuração (YAML)</label>
-                      <Textarea
-                        value={newAgent.config}
-                        onChange={(e) => setNewAgent({ ...newAgent, config: e.target.value })}
-                        placeholder="role: Specialista\nexpertise:\n  - Análise de dados\n  - Machine Learning"
-                        className="min-h-32 font-mono text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Conhecimento (Markdown)</label>
-                      <Textarea
-                        value={newAgent.knowledge}
-                        onChange={(e) => setNewAgent({ ...newAgent, knowledge: e.target.value })}
-                        placeholder="# Base de Conhecimento\n## Especialidades\n- Análise de dados\n- Machine Learning"
-                        className="min-h-32"
-                      />
-                    </div>
-                    <Button onClick={createAgent} className="w-full h-11 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 font-medium">
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      Criar Agente
-                    </Button>
-                  </div>
-                </DialogContent>
               </Dialog>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <ElegantCard
-              title="Total de Agentes"
-              value={agentStats.total}
-              description="Todos os agentes cadastrados"
-              icon={Brain}
-              iconColor="text-blue-600"
-              bgColor="bg-blue-100 dark:bg-blue-900/20"
-              badgeColor="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700"
-            />
-            <ElegantCard
-              title="Templates"
-              value={agentStats.templates}
-              description="Agentes modelo pré-configurados"
-              icon={Star}
-              iconColor="text-purple-600"
-              bgColor="bg-purple-100 dark:bg-purple-900/20"
-              badgeColor="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700"
-            />
-            <ElegantCard
-              title="Customizados"
-              value={agentStats.custom}
-              description="Agentes personalizados"
-              icon={Code}
-              iconColor="text-green-600"
-              bgColor="bg-green-100 dark:bg-green-900/20"
-              badgeColor="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700"
-            />
-            <ElegantCard
-              title="Ativos"
-              value={agentStats.active}
-              description="Agentes em operação"
-              icon={Zap}
-              iconColor="text-orange-600"
-              bgColor="bg-orange-100 dark:bg-orange-900/20"
-              badgeColor="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700"
-            />
-          </div>
-
-          {/* Search and Filter */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-4 mb-8">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar agentes por nome ou descrição..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-40 h-11 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Tipos</SelectItem>
-                  <SelectItem value="template">Templates</SelectItem>
-                  <SelectItem value="custom">Customizados</SelectItem>
-                  <SelectItem value="composed">Compostos</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </div>
 
-        {/* Content */}
-        {isLoading ? (
-          <div className="text-center py-16">
-            <div className="relative inline-block mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Brain className="w-8 h-8 text-white animate-pulse" />
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl animate-ping opacity-20"></div>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Carregando agentes...</h3>
-            <p className="text-muted-foreground">Aguarde enquanto carregamos seus agentes inteligentes.</p>
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Buscar agentes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        ) : (
+          
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Filtrar por..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Agentes</SelectItem>
+              <SelectItem value="active">Ativos</SelectItem>
+              <SelectItem value="inactive">Inativos</SelectItem>
+              <SelectItem value="template">Templates</SelectItem>
+              <SelectItem value="custom">Personalizados</SelectItem>
+              <SelectItem value="composed">Compostos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <p className="text-gray-600">Carregando agentes...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Agents Grid */}
+        {!isLoading && (
           <>
-            {filteredAgents.length > 0 ? (
+            {viewMode === 'functional' ? (
+              // Functional Cards View
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredAgents.map((agent) => (
+                  <FunctionalCard
+                    key={agent.id}
+                    agent={{
+                      id: agent.id,
+                      name: agent.name,
+                      description: agent.description,
+                      type: agent.type,
+                      config: agent.config,
+                      knowledge: agent.knowledge,
+                      status: agent.status
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              // Traditional Cards View
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredAgents.map((agent) => {
-                  const TypeIcon = getTypeIcon(agent.type);
                   const agentInfo = extractAgentInfo(agent);
+                  const isArchivedStatus = isArchived(agent);
+
                   return (
                     <ElegantCard
                       key={agent.id}
-                      title={agent.name}
-                      description={agent.description}
-                      icon={TypeIcon}
-                      subtitle={`Modelo: ${agentInfo.llmModel}`}
-                      iconColor={agent.type === 'template' ? 'text-blue-600' : 
-                               agent.type === 'custom' ? 'text-purple-600' : 'text-green-600'}
-                      bgColor={agent.type === 'template' ? 'bg-blue-100 dark:bg-blue-900/20' : 
-                               agent.type === 'custom' ? 'bg-purple-100 dark:bg-purple-900/20' : 'bg-green-100 dark:bg-green-900/20'}
-                      badge={agent.type}
-                      badgeColor={agent.type === 'template' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
-                               agent.type === 'custom' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
-                               'bg-green-50 text-green-700 border-green-200'}
-                      showActions={true}
-                      onViewDetails={() => handleViewDetails(agent)}
-                      onEdit={() => handleEditAgent(agent)}
-                      actionsMenu={
-                        <AgentActionsMenu
-                          agent={agent}
-                          onExecute={handleExecute}
-                          onEdit={handleEditAgent}
-                          onDuplicate={handleDuplicate}
-                          onArchive={handleArchive}
-                          onDelete={handleDelete}
-                          onExport={handleExport}
-                          onShare={handleShare}
-                          onExportToFlowise={handleExportToFlowise}
-                        />
-                      }
-                      metadata={[
-                        {
-                          label: 'LLM',
-                          value: agentInfo.llmModel,
-                          icon: Cpu,
-                          color: 'text-blue-600'
-                        },
-                        {
-                          label: 'Temp',
-                          value: agentInfo.temperature.toString(),
-                          icon: Zap,
-                          color: 'text-orange-600'
-                        },
-                        {
-                          label: 'Flowise',
-                          value: agent.exportedToFlowise ? 'Exportado' : 'Não exportado',
-                          icon: Rocket,
-                          color: agent.exportedToFlowise ? 'text-green-600' : 'text-gray-600'
-                        },
-                        {
-                          label: 'Conhecimento',
-                          value: agentInfo.hasKnowledge ? 'Sim' : 'Não',
-                          icon: Database,
-                          color: agentInfo.hasKnowledge ? 'text-green-600' : 'text-gray-600'
-                        }
-                      ]}
+                      className={`hover:shadow-lg transition-all duration-300 ${
+                        isArchivedStatus ? 'opacity-60' : ''
+                      }`}
                     >
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          size="sm" 
-                          className="flex-1 h-9 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                          onClick={() => handleExecute(agent)}
-                        >
-                          <Play className="w-4 h-4 mr-1" />
-                          Executar
-                        </Button>
-                        {agent.exportedToFlowise && agent.chatflowUrl && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="h-9 text-green-600 border-green-600 hover:bg-green-50"
-                            onClick={() => window.open(agent.chatflowUrl, '_blank')}
-                          >
-                            <Rocket className="w-4 h-4 mr-1" />
-                            Chat
-                          </Button>
-                        )}
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="h-9"
-                          onClick={() => handleEditAgent(agent)}
-                        >
-                          <Settings className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                              <Brain className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{agent.name}</CardTitle>
+                              <CardDescription className="text-sm">
+                                {agent.workspace?.name}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <AgentActionsMenu
+                            agent={agent}
+                            onExecute={handleExecute}
+                            onEdit={handleEditAgent}
+                            onDuplicate={handleDuplicate}
+                            onExport={handleExport}
+                            onShare={handleShare}
+                            onArchive={handleArchive}
+                            onDelete={handleDelete}
+                            onExportToFlowise={handleExportToFlowise}
+                          />
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="pt-0">
+                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                          {agent.description}
+                        </p>
+
+                        <div className="space-y-3">
+                          {/* Agent Info */}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="flex items-center">
+                              <Cpu className="w-3 h-3 mr-1" />
+                              {agentInfo.llmModel}
+                            </span>
+                            <span className="flex items-center">
+                              <Database className="w-3 h-3 mr-1" />
+                              {agentInfo.temperature}
+                            </span>
+                          </div>
+
+                          {/* Status and Actions */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Badge 
+                                variant={agent.status === 'active' ? 'default' : 'secondary'}
+                                className={agent.status === 'active' 
+                                  ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                }
+                              >
+                                {agent.status === 'active' ? 'Ativo' : agent.status === 'inactive' ? 'Inativo' : 'Em treinamento'}
+                              </Badge>
+                              
+                              {agentInfo.hasTools && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Code className="w-3 h-3 mr-1" />
+                                  Tools
+                                </Badge>
+                              )}
+                              
+                              {agentInfo.hasKnowledge && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Database className="w-3 h-3 mr-1" />
+                                  Knowledge
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="flex space-x-1">
+                              {agent.chatflowUrl && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="h-8 text-green-600 border-green-600 hover:bg-green-50"
+                                  onClick={() => window.open(agent.chatflowUrl, '_blank')}
+                                >
+                                  <Rocket className="w-4 h-4 mr-1" />
+                                  Chat
+                                </Button>
+                              )}
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-8"
+                                onClick={() => handleEditAgent(agent)}
+                              >
+                                <Settings className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
                     </ElegantCard>
                   );
                 })}
               </div>
-            ) : (
+            )}
+
+            {/* Empty State */}
+            {filteredAgents.length === 0 && (
               <div className="text-center py-16">
                 <div className="relative inline-block mb-6">
                   <div className="w-20 h-20 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 rounded-2xl flex items-center justify-center">
@@ -947,10 +834,14 @@ ${JSON.stringify(agent.groups, null, 2)}
                     <Search className="w-3 h-3 text-slate-500" />
                   </div>
                 </div>
-                <h3 className="text-2xl font-semibold mb-3">Nenhum agente encontrado</h3>
+                <h3 className="text-2xl font-semibold mb-3">
+                  {viewMode === 'functional' ? 'Nenhum agente funcional encontrado' : 'Nenhum agente encontrado'}
+                </h3>
                 <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                   {searchQuery || filterType !== 'all' 
                     ? 'Nenhum agente corresponde aos seus filtros. Tente ajustar sua busca ou filtros.'
+                    : viewMode === 'functional'
+                    ? 'Crie seu primeiro agente funcional para começar a transformar seus projetos com o poder da IA.'
                     : 'Crie seu primeiro agente inteligente para começar a transformar seus projetos com o poder da IA.'
                   }
                 </p>
@@ -981,39 +872,126 @@ ${JSON.stringify(agent.groups, null, 2)}
             )}
           </>
         )}
-      </div>
 
-      {/* Dialogs */}
-      {selectedAgent && (
-        <>
-          <AgentDetailsDialog
-            agent={selectedAgent}
-            open={isDetailsDialogOpen}
-            onOpenChange={setIsDetailsDialogOpen}
-            onExecute={handleExecute}
-            onEdit={handleEditAgent}
-          />
-          
-          <EditAgentDialog
-            agent={selectedAgent}
-            open={isEditDialogOpen}
-            onOpenChange={(open) => {
-              setIsEditDialogOpen(open);
-              if (!open) {
-                setSelectedAgent(null);
-              }
-            }}
-            onAgentUpdated={loadAgents}
-          />
-          
-          <ExportFormatDialog
-            agent={selectedAgent}
-            isOpen={isExportDialogOpen}
-            onClose={() => setIsExportDialogOpen(false)}
-            onExport={handleExportWithFormat}
-          />
-        </>
-      )}
+        {/* Create Agent Dialog */}
+        <Dialog open={isCreateAgentOpen} onOpenChange={setIsCreateAgentOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Brain className="w-5 h-5 text-blue-600" />
+                <span>Criar Novo Agente</span>
+              </DialogTitle>
+              <DialogDescription>
+                Crie um novo agente inteligente com capacidades específicas
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nome do Agente</Label>
+                  <Input
+                    id="name"
+                    value={newAgent.name}
+                    onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+                    placeholder="Ex: Consultor de Negócios"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="type">Tipo</Label>
+                  <RadioGroup 
+                    value={newAgent.type} 
+                    onValueChange={(value) => setNewAgent({ ...newAgent, type: value as 'template' | 'custom' | 'composed' })}
+                    className="flex space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="template" id="template" />
+                      <Label htmlFor="template">Template</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="custom" id="custom" />
+                      <Label htmlFor="custom">Personalizado</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="composed" id="composed" />
+                      <Label htmlFor="composed">Composto</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={newAgent.description}
+                  onChange={(e) => setNewAgent({ ...newAgent, description: e.target.value })}
+                  placeholder="Descreva as funcionalidades e propósito do agente..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="workspace">Workspace</Label>
+                <Select value={selectedWorkspace} onValueChange={setSelectedWorkspace}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um workspace" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workspaces.map((workspace) => (
+                      <SelectItem key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsCreateAgentOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={createAgent} disabled={!newAgent.name || !selectedWorkspace}>
+                  Criar Agente
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialogs */}
+        {selectedAgent && (
+          <>
+            <AgentDetailsDialog
+              agent={selectedAgent}
+              open={isDetailsDialogOpen}
+              onOpenChange={setIsDetailsDialogOpen}
+              onExecute={handleExecute}
+              onEdit={handleEditAgent}
+            />
+            
+            <EditAgentDialog
+              agent={selectedAgent}
+              open={isEditDialogOpen}
+              onOpenChange={(open) => {
+                setIsEditDialogOpen(open);
+                if (!open) {
+                  setSelectedAgent(null);
+                }
+              }}
+              onAgentUpdated={loadAgents}
+            />
+            
+            <ExportFormatDialog
+              agent={selectedAgent}
+              isOpen={isExportDialogOpen}
+              onClose={() => setIsExportDialogOpen(false)}
+              onExport={handleExportWithFormat}
+            />
+          </>
+        )}
+      </div>
     </MainLayout>
   );
 }

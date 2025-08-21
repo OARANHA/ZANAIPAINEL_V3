@@ -231,13 +231,25 @@ export default function FunctionalCard({ agent, className = '', compact = false 
   };
 
   const getSecondaryColor = () => {
-    if (!agentConfig) return 'bg-gray-50';
-    return agentConfig.color.secondary;
+    if (!agentConfig) return 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900';
+    
+    // Cores mais escuras e com melhor contraste para o fundo do card
+    const colorMap: Record<string, string> = {
+      'bg-red-100': 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/30 border-red-200 dark:border-red-800/50',
+      'bg-pink-100': 'bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/30 border-pink-200 dark:border-pink-800/50',
+      'bg-blue-100': 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/30 border-blue-200 dark:border-blue-800/50',
+      'bg-green-100': 'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/30 border-green-200 dark:border-green-800/50',
+      'bg-purple-100': 'bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/30 border-purple-200 dark:border-purple-800/50',
+      'bg-indigo-100': 'bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/30 border-indigo-200 dark:border-indigo-800/50',
+      'bg-gray-100': 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700'
+    };
+    
+    return colorMap[agentConfig.color.secondary] || 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700';
   };
 
   if (compact) {
     return (
-      <Card className={`hover:shadow-lg transition-all duration-300 ${getSecondaryColor()} ${className}`}>
+      <Card className={`hover:shadow-lg transition-all duration-300 ${getSecondaryColor()} border ${className}`}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -281,7 +293,7 @@ export default function FunctionalCard({ agent, className = '', compact = false 
   }
 
   return (
-    <Card className={`hover:shadow-lg transition-all duration-300 ${getSecondaryColor()} ${className}`}>
+    <Card className={`hover:shadow-lg transition-all duration-300 ${getSecondaryColor()} border ${className}`}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -301,11 +313,11 @@ export default function FunctionalCard({ agent, className = '', compact = false 
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Badge variant="outline" className={agentConfig?.color.accent}>
+            <Badge variant="outline" className={`${agentConfig?.color.accent} font-medium`}>
               {agentConfig?.name || 'Agente'}
             </Badge>
             {agent.status === 'active' && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
+              <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 font-medium">
                 Ativo
               </Badge>
             )}
@@ -326,7 +338,7 @@ export default function FunctionalCard({ agent, className = '', compact = false 
                 <Button
                   key={action.id}
                   variant="outline"
-                  className="h-auto p-4 flex flex-col items-start space-y-2 hover:bg-accent"
+                  className="h-auto p-4 flex flex-col items-start space-y-2 hover:bg-accent/50 border-border/50 hover:border-border"
                   onClick={() => handleActionSelect(action)}
                 >
                   <div className="flex items-center space-x-2 w-full">

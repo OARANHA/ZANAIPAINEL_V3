@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
       //   destination: '/admin/login',
       // },
       {
+        source: '/admin/agents',
+        destination: '/admin/agents-page-new',
+      },
+      {
         source: '/agents',
         destination: '/admin/agents',
       },

@@ -22,7 +22,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Info,
-  VSCode,
+  SquareCode,
   FileText,
   Brain,
   Zap
@@ -135,7 +135,7 @@ export default function VSCodeRegistrationPage() {
               <CardContent>
                 <div className="space-y-6">
                   <Alert>
-                    <VSCode className="w-4 h-4" />
+                    <SquareCode className="w-4 h-4" />
                     <AlertDescription className="text-base">
                       <strong>Próximos passos:</strong> Você receberá um email com as instruções 
                       para instalar o plugin VS Code e acessar a biblioteca de prompts especializados.
@@ -203,7 +203,7 @@ export default function VSCodeRegistrationPage() {
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button size="lg" asChild>
                       <a href="https://marketplace.visualstudio.com/items?itemName=zanai.vscode-plugin" target="_blank" rel="noopener noreferrer">
-                        <VSCode className="w-4 h-4 mr-2" />
+                        <SquareCode className="w-4 h-4 mr-2" />
                         Instalar Plugin VS Code
                       </a>
                     </Button>
@@ -230,7 +230,7 @@ export default function VSCodeRegistrationPage() {
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                <VSCode className="w-4 h-4 mr-2" />
+                <SquareCode className="w-4 h-4 mr-2" />
                 Registro VS Code
               </Badge>
               <Badge variant="outline">
