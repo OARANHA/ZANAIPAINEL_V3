@@ -8,14 +8,24 @@ export function middleware(request: NextRequest) {
   const isAuthenticated = request.cookies.get('isAuthenticated')?.value === 'true';
   const userRole = request.cookies.get('userRole')?.value;
   
+  // Verificar se é uma requisição interna do servidor (localhost para localhost)
+  const isInternalRequest = request.headers.get('host') === 'localhost:3000' && 
+                            request.headers.get('user-agent')?.includes('node-fetch') ||
+                            request.headers.get('x-internal-request') === 'true';
+  
   // Rotas que não precisam de autenticação
   const publicRoutes = ['/', '/login', '/register', '/planos', '/contato', '/servicos', '/demonstracao', '/doc', 'agentes', '/automacao', '/admin/login', '/admin/logout', '/flowise-external-sync'];
   
   // APIs públicas que não precisam de autenticação
-  const publicAPIs = ['/api/health', '/admin/api/auth/login', '/api/chat', '/api/flowise-chat', '/api/flowise-external-sync'];
+  const publicAPIs = ['/api/health', '/admin/api/auth/login', '/api/chat', '/api/flowise-chat', '/api/flowise-external-sync', '/api/card/execute'];
   
   // Se for rota pública ou API pública, permite acesso imediatamente
   if (publicRoutes.includes(pathname) || publicAPIs.some(api => pathname.startsWith(api))) {
+    return NextResponse.next();
+  }
+  
+  // Se for requisição interna do servidor, permite acesso
+  if (isInternalRequest) {
     return NextResponse.next();
   }
   

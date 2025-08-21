@@ -175,10 +175,11 @@ export async function POST(request: NextRequest) {
         // Ações que usam MCP tools
         const mcpTool = ACTION_MCP_TOOL_MAPPING[actionId] || 'web_search';
         
-        const mcpResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/admin/api/mcp/execute`, {
+        const mcpResponse = await fetch(`http://localhost:3000/admin/api/mcp/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'x-internal-request': 'true'
           },
           body: JSON.stringify({
             serverId: 'default', // ID do servidor MCP padrão
@@ -204,10 +205,11 @@ export async function POST(request: NextRequest) {
         // Ações que usam outras APIs
         const apiEndpoint = ACTION_API_MAPPING[actionId] || '/admin/api/execute';
         
-        const apiResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}${apiEndpoint}`, {
+        const apiResponse = await fetch(`http://localhost:3000${apiEndpoint}`, {
           method: action.method,
           headers: {
             'Content-Type': 'application/json',
+            'x-internal-request': 'true'
           },
           body: JSON.stringify({
             agentId,
